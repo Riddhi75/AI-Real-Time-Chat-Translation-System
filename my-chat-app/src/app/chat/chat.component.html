@@ -1,0 +1,172 @@
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>💬 Chats</h2>
+      <button class="new-chat" (click)="openNewChat()" title="New Chat">+</button>
+    </div>
+    
+    <!-- Search Users -->
+    <div class="search-box">
+      <input 
+        type="text" 
+        [(ngModel)]="searchText" 
+        (input)="searchUsers()" 
+        placeholder="🔍 Search users or messages..."
+      />
+    </div>
+    
+    <!-- Users List -->
+    <div class="chat-list">
+      <div *ngFor="let chat of filteredChats" 
+           class="chat-item" 
+           [class.active]="activeChat === chat.id" 
+           (click)="selectChat(chat.id)">
+        <div class="chat-avatar">{{ chat.name?.charAt(0) || '?' }}</div>
+        <div class="chat-info">
+          <div class="chat-name">{{ chat.name }}</div>
+          <div class="chat-preview">{{ chat.lastMsg }}</div>
+        </div>
+        <div class="chat-meta">
+          <div class="chat-time">{{ chat.time }}</div>
+          <div class="unread" *ngIf="chat.unread">{{ chat.unread }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Chat Area -->
+  <div class="chat-area">
+    <!-- Chat Header -->
+    <div class="chat-header">
+      <div>
+        <div class="contact-name">{{ currentChat?.name || 'Select a chat' }}</div>
+        <div class="contact-status">{{ currentChat?.online ? '🟢 Online' : '⚫ Offline' }}</div>
+      </div>
+      <button class="logout-btn" (click)="logout()">Logout</button>
+    </div>
+
+    <!-- Messages Area -->
+    <div class="messages" #msgContainer tabindex="-1">
+      <div *ngIf="messages.length === 0" class="no-messages">
+        💬 No messages yet. Send a message to start the conversation!
+      </div>
+      
+      <div *ngFor="let group of groupedMessages">
+        <div class="date-separator">{{ group.date }}</div>
+        <div *ngFor="let msg of group.messages"
+             class="message" 
+             [class.message-sent]="msg.sender === 'me'"
+             [attr.data-message-id]="msg.id">
+          
+          
+          <div class="message-actions" *ngIf="msg.sender === 'me'">
+            <button class="action-btn edit" (click)="$event.stopPropagation(); editMessage(msg)" title="Edit Message">✏️ Edit</button>
+            <button class="action-btn delete" (click)="$event.stopPropagation(); deleteMessage(msg.id)" title="Delete Message">🗑️ Delete</button>
+          </div>
+          
+        
+          <div class="translate-actions" *ngIf="msg.sender !== 'me'">
+            <span class="translate-label">Translate to:</span>
+            <button class="action-btn translate" (click)="$event.stopPropagation(); translateThisMessage(msg, 'hi')" title="Translate to Hindi">🇮🇳 Hindi</button>
+            <button class="action-btn translate" (click)="$event.stopPropagation(); translateThisMessage(msg, 'ta')" title="Translate to Tamil">🇮🇳 Tamil</button>
+            <button class="action-btn translate" (click)="$event.stopPropagation(); translateThisMessage(msg, 'te')" title="Translate to Telugu">🇮🇳 Telugu</button>
+            <button class="action-btn translate" (click)="$event.stopPropagation(); translateThisMessage(msg, 'bn')" title="Translate to Bengali">🇮🇳 Bengali</button>
+            <button class="action-btn translate" (click)="$event.stopPropagation(); translateThisMessage(msg, 'mr')" title="Translate to Marathi">🇮🇳 Marathi</button>
+            <button class="action-btn translate" (click)="$event.stopPropagation(); translateThisMessage(msg, 'ml')" title="Translate to Malayalam">🇮🇳 Malayalam</button>
+          </div>
+          
+          
+<button class="action-btn reply" *ngIf="msg.sender !== 'me'" (click)="$event.stopPropagation(); setReply(msg)">↩️ Reply</button>
+          
+         
+          <div class="reply-preview" *ngIf="msg.replyTo">
+            <div class="reply-to">↩️ Replying to {{ msg.replyTo.sender === 'me' ? 'yourself' : msg.replyTo.sender }}</div>
+            <div class="reply-text">"{{ msg.replyTo.text }}"</div>
+          </div>
+          
+          <div class="message-bubble">
+            <div class="message-text">{{ msg.displayText || msg.text }}</div>
+            <div class="message-original" *ngIf="msg.showOriginal && msg.originalText && msg.originalText !== msg.displayText">
+              🌐 Original: {{ msg.originalText }}
+            </div>
+            <div class="message-info">
+              <span class="message-time">{{ msg.time }}</span>
+              <span class="message-status" *ngIf="msg.sender === 'me'">{{ msg.read ? '✓✓' : '✓' }}</span>
+              <button class="show-original-btn" *ngIf="msg.translatedText && msg.sender !== 'me' && msg.translatedText !== msg.originalText" (click)="$event.stopPropagation(); toggleOriginal(msg)">
+                {{ msg.showOriginal ? 'Show Translated' : 'Show Original' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+     
+      <div class="typing" *ngIf="typing">
+        <span></span><span></span><span></span>
+        <span>{{ typingUser }} is typing...</span>
+      </div>
+    </div>
+
+   
+    <div class="reply-bar" *ngIf="replyTo">
+      <div class="reply-content">
+        <span>↩️</span>
+        <span>Replying to <strong>{{ replyTo.sender === 'me' ? 'yourself' : replyTo.sender }}</strong></span>
+        <span class="reply-preview-text">"{{ replyTo.text | slice:0:50 }}"</span>
+      </div>
+      <button class="cancel-reply" (click)="cancelReply()">✖</button>
+    </div>
+
+    <!-- Edit Message Bar -->
+    <div class="edit-bar" *ngIf="editingMessage">
+      <div class="edit-content">
+        <span>✏️ Editing message</span>
+        <input [(ngModel)]="editMessageText" class="edit-input" placeholder="Edit message..." (keyup.enter)="saveEdit()">
+      </div>
+      <div>
+        <button class="cancel-edit" (click)="cancelEdit()">Cancel</button>
+        <button class="save-edit" (click)="saveEdit()">Save</button>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <input 
+        [(ngModel)]="newMessage" 
+        (keyup.enter)="sendMessage()" 
+        (keyup)="onTyping()"
+        placeholder="Type a message..."
+      />
+      <button (click)="sendMessage()" [disabled]="!newMessage.trim()">
+        Send
+      </button>
+    </div>
+
+    <!-- Settings -->
+    <div class="settings">
+      <div class="setting">
+        <label>🌐 Default Translate to:</label>
+        <select [(ngModel)]="targetLang">
+          <option value="hi">🇮🇳 Hindi</option>
+          <option value="en">🇬🇧 English</option>
+          <option value="ta">🇮🇳 Tamil</option>
+          <option value="te">🇮🇳 Telugu</option>
+          <option value="bn">🇮🇳 Bengali</option>
+          <option value="mr">🇮🇳 Marathi</option>
+          <option value="gu">🇮🇳 Gujarati</option>
+          <option value="kn">🇮🇳 Kannada</option>
+          <option value="ml">🇮🇳 Malayalam</option>
+        </select>
+      </div>
+      <div class="setting">
+        <label>👁️ Display:</label>
+        <div class="toggle">
+          <button (click)="showTranslated = true" [class.active]="showTranslated">Translated</button>
+          <button (click)="showTranslated = false" [class.active]="!showTranslated">Original</button>
+        </div>
+      </div>
+      <div class="message-count">📨 {{ messages.length }} messages</div>
+    </div>
+  </div>
+</div>

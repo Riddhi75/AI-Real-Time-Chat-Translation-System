@@ -1,0 +1,1 @@
+{"version":"4.1.4","results":[["my-chat-app:src/app/register/register.spec.ts",{"duration":671.2930999999999,"failed":false}],["my-chat-app:src/app/chat/chat.spec.ts",{"duration":708.9668999999994,"failed":false}],["my-chat-app:src/app/login/login.spec.ts",{"duration":692.8182999999999,"failed":false}]]}
